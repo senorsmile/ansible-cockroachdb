@@ -1,0 +1,58 @@
+---
+- block:
+    - name: Create Cockroach group
+      group: 
+        name: "cockroach" 
+        state: present
+
+    - name: Create Cockroach user
+      user: 
+        name: "cockroach" 
+        shell: /bin/bash 
+        group: "cockroach" 
+        state: present
+  tags:
+    - cockroach_users
+
+- include_tasks: hostname.yml
+  args:
+    apply:
+      tags:
+        - cockroach_hostname
+  tags: always
+
+- include_tasks: certs_ca.yml
+  args:
+    apply:
+      tags:
+        - cockroach_certs
+        - cockroach_ca
+  tags: always
+
+- include_tasks: certs_nodes.yml
+  loop: "{{ groups['vagrant'] }}"
+  loop_control:
+    loop_var: outer_item
+  args:
+    apply:
+      tags:
+        - cockroach_certs
+        - cockroach_nodes
+  tags: always
+  
+- include_tasks: certs_root.yml
+  run_once: true
+  args:
+    apply:
+      tags:
+        - cockroach_certs
+        - cockroach_root
+  tags: always
+  
+- include_tasks: install.yml
+  args:
+    apply:
+      tags:
+        - cockroach_install
+  tags: always
+

@@ -1,0 +1,73 @@
+---
+#----------------------
+# create node cert on local
+#----------------------
+
+- name: Debug node
+  debug:
+    msg: "{{ outer_item }}"
+
+# cockroach cert create-node "roach0${last}" 192.168.116.10"$last" localhost 127.0.0.1 --certs-dir=./tmp/certs/ --ca-key=./tmp/my-safe-directory/ca.key
+- name: Create node certs
+  become: false
+  delegate_to: localhost
+  run_once: true
+  shell: |
+      opts=(
+        cert create-node
+        "{{ inventory_hostname }}" 
+        "{{ ansible_host }}"
+        localhost 127.0.0.1 
+        --certs-dir="{{ playbook_dir }}/tmp/certs/"
+        --ca-key="{{ playbook_dir }}/tmp/my-safe-directory/ca.key"
+      )
+      cockroach ${opts[@]}
+  args:
+    chdir: "{{ playbook_dir }}/tmp/"
+    executable: /bin/bash
+    creates: "{{ playbook_dir }}/tmp/certs/node.key"
+
+#----------------------
+# xfer certs to remotes
+#----------------------
+- block:
+      - name: Create remote certs dir
+        file:
+          name: '/var/lib/cockroach/certs/' 
+          state: directory
+          owner: cockroach
+          group: cockroach
+
+      - name: Transfer certs
+        copy:
+          src: "tmp/certs/{{ item }}"
+          dest:  "/var/lib/cockroach/certs/{{ item }}"
+          owner: cockroach
+          group: cockroach
+          mode: '0600'
+          force: no
+        loop:
+          - ca.crt 
+          - node.crt 
+          - node.key
+
+  when: ( inventory_hostname == outer_item )
+
+
+
+#----------------------
+# remove local copy of node certs
+#----------------------
+# TODO: make this idempotent 
+#       by transferring the files to separate folders per node
+#       and NOT removing them
+- name: Remove local node certs
+  become: false
+  delegate_to: localhost
+  run_once: true
+  file:
+    state: absent
+    path: "{{ playbook_dir }}/tmp/certs/{{ item }}"
+  loop:
+    - node.crt 
+    - node.key

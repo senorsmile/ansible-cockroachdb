@@ -1,0 +1,23 @@
+---
+- block:
+    - name: Create dirs
+      file:
+        state: directory
+        name: "{{ item }}"
+      loop:
+        - "{{ playbook_dir }}/tmp/certs/"
+        - "{{ playbook_dir }}/tmp/my-safe-directory/"
+
+    - name: Create local CA
+      shell: |
+        cockroach cert create-ca \
+          --certs-dir="{{ playbook_dir }}/tmp/certs/" \
+          --ca-key="{{ playbook_dir }}/tmp/my-safe-directory/ca.key"
+      args:
+        chdir: "{{ playbook_dir }}/tmp/"
+        executable: /bin/bash
+        creates: "{{ playbook_dir }}/tmp/my-safe-directory/ca.key"
+
+  become: false
+  delegate_to: localhost
+  run_once: true

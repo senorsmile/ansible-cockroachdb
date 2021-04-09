@@ -1,0 +1,24 @@
+---
+# cockroach cert create-client \
+#root \
+#--certs-dir=certs \
+#--ca-key=my-safe-directory/ca.key
+
+
+- name: Create node certs
+  become: false
+  delegate_to: localhost
+  run_once: true
+  shell: |
+      opts=(
+        cert create-client
+        root
+        --certs-dir="{{ playbook_dir }}/tmp/certs/"
+        --ca-key="{{ playbook_dir }}/tmp/my-safe-directory/ca.key"
+      )
+      cockroach ${opts[@]}
+  args:
+    chdir: "{{ playbook_dir }}/tmp/"
+    executable: /bin/bash
+    creates: "{{ playbook_dir }}/tmp/certs/client.root.key"
+

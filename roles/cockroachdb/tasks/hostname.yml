@@ -1,0 +1,53 @@
+---
+- name: Set the hostname
+  become: true
+  hostname:
+      name: "{{ fqdn }}"
+
+- name: Re-gather facts
+  action: setup
+  when: inventory_hostname != fqdn
+
+#- name: Add hostname in /etc/hosts
+#  become: true
+#  lineinfile:
+#      dest: /etc/hosts
+#      line: "{{ host_ip }} {{ fqdn }}"
+#      regexp: '{{ host_ip }}'
+#      state: present
+
+- name: Add 127.0.1.1 in /etc/hosts
+  become: true
+  lineinfile:
+      dest: /etc/hosts
+      line: "127.0.1.1 {{ fqdn }}"
+      regexp: '^127\.0\.1\.1'
+      insertafter: '^127\.0\.0\.1'
+      state: present
+
+- name: Add 127.0.0.1 in /etc/hosts
+  become: true
+  lineinfile:
+      dest: /etc/hosts
+      line: "127.0.0.1 localhost {{ fqdn }}"
+      regexp: '^127\.0\.0\.1'
+      state: present
+
+- name: DEBUG groups 2
+  debug:
+    msg: |
+      {{ item }} {{ hostvars[item]['ansible_host'] }}
+  loop: "{{ groups[cockroach_group] }}"
+  tags:
+    - test
+
+- name: Add all hosts to /etc/hosts
+  become: true
+  lineinfile:
+      dest:   "/etc/hosts"
+      line:   "{{ hostvars[item]['ansible_host'] }} {{ item }} "
+      regexp: "{{ hostvars[item]['ansible_host'] }}"
+      state:  present
+  loop: "{{ groups[cockroach_group] }}"
+  tags:
+    - test

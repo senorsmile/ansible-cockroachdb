@@ -1,0 +1,23 @@
+---
+all:
+  children:
+    vagrant:
+      vars:
+        ansible_ssh_extra_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+        ansible_user: vagrant
+        #ansible_become_pass: vagrant
+        ansible_password: vagrant
+        ansible_ssh_private_key_file: ".vagrant/machines/{{ inventory_hostname }}/virtualbox/private_key"
+
+        fqdn: "{{ inventory_hostname }}"
+        host_ip: "{{ ansible_host }}"
+
+        cockroach_group: vagrant
+        
+      hosts:
+        roach01:
+          ansible_host: 192.168.116.101
+        roach02:
+          ansible_host: 192.168.116.102
+        roach03:
+          ansible_host: 192.168.116.103

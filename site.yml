@@ -1,0 +1,16 @@
+---
+- hosts:
+    - vagrant
+  gather_facts: false
+  become: true
+  pre_tasks:
+    - name: Gather facts
+      setup:
+
+
+    #-----------
+    # set hostname
+    #-----------
+  roles:
+    - role: cockroachdb
+      tags: cockroachdb

@@ -1,0 +1,59 @@
+---
+- name: Download cockroach targz
+  get_url:
+    url: "https://binaries.cockroachdb.com/cockroach-v{{ cockroach_ver | default('20.2.7') }}.linux-amd64.tgz"
+    dest: /usr/local/src/cockroach.tgz
+
+- name: Decompress cockroach targz
+  unarchive:
+    src: /usr/local/src/cockroach.tgz
+    dest: /usr/local/src/
+    remote_src: true
+    creates: /usr/local/src/cockroach-v{{ cockroach_ver | default('20.2.7') }}.linux-amd64/cockroach
+  register: decompress
+
+- name: Install cockroach binary
+  copy:
+    src: /usr/local/src/cockroach-v{{ cockroach_ver | default('20.2.7') }}.linux-amd64/cockroach
+    dest: /usr/local/bin/cockroach
+    owner: cockroach
+    group: cockroach
+    mode: '0755'
+    remote_src: true
+
+- name: Install cockroach libs
+  copy:
+    src: "/usr/local/src/cockroach-v{{ cockroach_ver | default('20.2.7') }}.linux-amd64/lib/{{ item }}"
+    dest: "/usr/local/lib/{{ item }}"
+    owner: cockroach
+    group: cockroach
+    remote_src: true
+  loop:
+    - libgeos.so
+    - libgeos_c.so
+
+- name: Create cockroach data dir
+  file:
+    state: directory
+    path: /var/lib/cockroach/
+    owner: cockroach
+    group: cockroach
+
+
+- name: Systemd unit
+  template:
+    src: cockroachdb.service.j2
+    dest: "/etc/systemd/system/cockroachdb.service"
+  register: systemd_file
+
+- name: Reload systemd 
+  systemd:
+    daemon_reload: yes
+  when: ( systemd_file.changed )
+
+- name: Start cockroachdb service
+  systemd:
+    name: cockroachdb
+    state: started
+    enabled: yes
+
