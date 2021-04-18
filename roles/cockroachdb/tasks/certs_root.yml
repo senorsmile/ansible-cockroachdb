@@ -5,7 +5,21 @@
 #--ca-key=my-safe-directory/ca.key
 
 
-- name: Create node certs
+- name: Create local root dir
+  become: false
+  delegate_to: localhost
+  file:
+    state: directory
+    path: "{{ playbook_dir }}/tmp/certs/root/"
+
+- name: Copy ca.crt to local root dir
+  become: false
+  delegate_to: localhost
+  copy:
+    src:  "{{ playbook_dir }}/tmp/certs/ca.crt"
+    dest: "{{ playbook_dir }}/tmp/certs/root/ca.crt"
+
+- name: Create root certs
   become: false
   delegate_to: localhost
   run_once: true
@@ -13,12 +27,12 @@
       opts=(
         cert create-client
         root
-        --certs-dir="{{ playbook_dir }}/tmp/certs/"
+        --certs-dir="{{ playbook_dir }}/tmp/certs/root/"
         --ca-key="{{ playbook_dir }}/tmp/my-safe-directory/ca.key"
       )
       cockroach ${opts[@]}
   args:
-    chdir: "{{ playbook_dir }}/tmp/"
+    chdir: "{{ playbook_dir }}/tmp/certs/"
     executable: /bin/bash
-    creates: "{{ playbook_dir }}/tmp/certs/client.root.key"
+    creates: "{{ playbook_dir }}/tmp/certs/root/client.root.key"
 

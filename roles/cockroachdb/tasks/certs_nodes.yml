@@ -5,7 +5,23 @@
 
 - name: Debug node
   debug:
-    msg: "{{ outer_item }}"
+    msg: "{{ node_name }}"
+
+- name: Create local node dir
+  become: false
+  delegate_to: localhost
+  file:
+    state: directory
+    path: "{{ playbook_dir }}/tmp/certs/{{ node_name }}/"
+
+
+- name: Copy ca.crt to local node dir
+  become: false
+  delegate_to: localhost
+  copy:
+    src:  "{{ playbook_dir }}/tmp/certs/ca.crt"
+    dest: "{{ playbook_dir }}/tmp/certs/{{ node_name }}/ca.crt"
+  
 
 # cockroach cert create-node "roach0${last}" 192.168.116.10"$last" localhost 127.0.0.1 --certs-dir=./tmp/certs/ --ca-key=./tmp/my-safe-directory/ca.key
 - name: Create node certs
@@ -13,19 +29,22 @@
   delegate_to: localhost
   run_once: true
   shell: |
+      cp "{{ playbook_dir }}/tmp/certs/ca.crt"  \
+         "{{ playbook_dir }}/tmp/certs/{{ node_name }}/ca.crt"
+
       opts=(
         cert create-node
         "{{ inventory_hostname }}" 
         "{{ ansible_host }}"
         localhost 127.0.0.1 
-        --certs-dir="{{ playbook_dir }}/tmp/certs/"
-        --ca-key="{{ playbook_dir }}/tmp/my-safe-directory/ca.key"
+          --certs-dir="{{ playbook_dir }}/tmp/certs/{{ node_name }}/"
+          --ca-key="{{ playbook_dir }}/tmp/my-safe-directory/ca.key"
       )
       cockroach ${opts[@]}
   args:
-    chdir: "{{ playbook_dir }}/tmp/"
-    executable: /bin/bash
-    creates: "{{ playbook_dir }}/tmp/certs/node.key"
+    chdir:      "{{ playbook_dir }}/tmp/certs/{{ node_name }}/"
+    creates:    "{{ playbook_dir }}/tmp/certs/{{ node_name }}/node.key"
+    executable: "/bin/bash"
 
 #----------------------
 # xfer certs to remotes
@@ -40,18 +59,18 @@
 
       - name: Transfer certs
         copy:
-          src: "tmp/certs/{{ item }}"
+          src:   "{{ playbook_dir }}/tmp/certs/{{ node_name }}/{{ item }}"
           dest:  "/var/lib/cockroach/certs/{{ item }}"
+          force: no
           owner: cockroach
           group: cockroach
-          mode: '0600'
-          force: no
+          mode:  '0600'
         loop:
           - ca.crt 
           - node.crt 
           - node.key
 
-  when: ( inventory_hostname == outer_item )
+  when: ( inventory_hostname == node_name )
 
 
 
@@ -61,13 +80,13 @@
 # TODO: make this idempotent 
 #       by transferring the files to separate folders per node
 #       and NOT removing them
-- name: Remove local node certs
-  become: false
-  delegate_to: localhost
-  run_once: true
-  file:
-    state: absent
-    path: "{{ playbook_dir }}/tmp/certs/{{ item }}"
-  loop:
-    - node.crt 
-    - node.key
+#- name: Remove local node certs
+#  become: false
+#  delegate_to: localhost
+#  run_once: true
+#  file:
+#    state: absent
+#    path: "{{ playbook_dir }}/tmp/certs/{{ item }}"
+#  loop:
+#    - node.crt 
+#    - node.key

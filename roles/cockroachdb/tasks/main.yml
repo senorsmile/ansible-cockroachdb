@@ -32,7 +32,7 @@
 - include_tasks: certs_nodes.yml
   loop: "{{ groups['vagrant'] }}"
   loop_control:
-    loop_var: outer_item
+    loop_var: node_name
   args:
     apply:
       tags:
